@@ -1,7 +1,28 @@
+// src/types/index.ts
+
 export interface Photo {
   id: string;
   url: string;
   file?: File;
+}
+
+export interface TimelineEvent {
+  _id?: string;
+  year: string;
+  title: string;
+  description: string;
+  photos: string[]; // URLs from Cloudinary
+  backgroundBlurImage?: string;
+}
+
+export interface Wish {
+  _id?: string;
+  author: string;
+  message: string;
+  mediaUrl?: string;
+  mediaType: 'image' | 'video' | 'none';
+  reactions: number;
+  isApproved: boolean;
 }
 
 export interface MosaicConfig {
