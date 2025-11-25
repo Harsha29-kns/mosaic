@@ -10,6 +10,7 @@ interface MosaicCanvasProps {
   config: MosaicConfig;
   showRevealAnimation: boolean;
   onRevealComplete?: () => void;
+  onMosaicGenerated?: (dataUrl: string) => void;
 }
 
 export default function MosaicCanvas({
@@ -17,7 +18,8 @@ export default function MosaicCanvas({
   tilePhotos,
   config,
   showRevealAnimation,
-  onRevealComplete
+  onRevealComplete,
+  onMosaicGenerated
 }: MosaicCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -172,6 +174,11 @@ export default function MosaicCanvas({
     setProgress(100);
     setIsGenerating(false);
     setRevealProgress(0);
+
+    if (onMosaicGenerated) {
+      const dataUrl = canvas.toDataURL('image/png');
+      onMosaicGenerated(dataUrl);
+    }
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {

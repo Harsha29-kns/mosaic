@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Photo, MosaicConfig, BirthdayConfig, AnimationConfig } from './types';
 import ImageUploader from './components/ImageUploader';
 import MosaicCanvas from './components/MosaicCanvas';
@@ -8,17 +8,17 @@ import AnimationControls from './components/AnimationControls';
 import AudioPlayer from './components/AudioPlayer';
 import PhotoSlideshow from './components/PhotoSlideshow';
 import BirthdayPage from './components/BirthdayPage';
-import { Eye, Settings, Wand2 } from 'lucide-react';
+import Login from './components/Login';
+import { Eye, Settings, Wand2, LogOut } from 'lucide-react';
 
-type View = 'editor' | 'preview';
+type UserRole = 'admin' | 'user' | null;
 
 function App() {
-  const [view, setView] = useState<View>('editor');
+  const [userRole, setUserRole] = useState<UserRole>(null);
   const [mainPhoto, setMainPhoto] = useState<Photo | null>(null);
   const [tilePhotos, setTilePhotos] = useState<Photo[]>([]);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [showRevealAnimation, setShowRevealAnimation] = useState(false);
-
+  const [mosaicDataUrl, setMosaicDataUrl] = useState<string>('');
+  
   const [mosaicConfig, setMosaicConfig] = useState<MosaicConfig>({
     tileSize: 40,
     cols: 0,
@@ -63,50 +63,65 @@ function App() {
     setTilePhotos((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const handlePreview = () => {
-    if (animationConfig.reveal) {
-      setShowRevealAnimation(true);
-    }
-    setView('preview');
+  const handleMosaicGenerated = (dataUrl: string) => {
+    setMosaicDataUrl(dataUrl);
   };
 
-  const handleBackToEditor = () => {
-    setView('editor');
-    setShowRevealAnimation(false);
-  };
-
-  const getMosaicImageUrl = (): string | undefined => {
-    const canvas = document.querySelector('canvas') as HTMLCanvasElement;
-    return canvas?.toDataURL('image/png');
+  const handleLogout = () => {
+    setUserRole(null);
   };
 
   const canGenerateMosaic = mainPhoto && tilePhotos.length >= 5;
 
-  if (view === 'preview') {
+  if (!userRole) {
+    return <Login onLogin={setUserRole} />;
+  }
+
+  // USER VIEW (READ ONLY)
+  if (userRole === 'user') {
     return (
-      <BirthdayPage
-        mainPhoto={mainPhoto}
-        birthdayConfig={birthdayConfig}
-        animationConfig={animationConfig}
-        mosaicImageUrl={getMosaicImageUrl()}
-        onBack={handleBackToEditor}
-      />
+      <>
+        <div className="fixed top-4 right-4 z-50">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/40 text-gray-800 rounded-lg backdrop-blur-sm transition-all shadow-sm"
+          >
+            <LogOut className="w-5 h-5" />
+            Sign Out
+          </button>
+        </div>
+        <BirthdayPage
+          mainPhoto={mainPhoto}
+          birthdayConfig={birthdayConfig}
+          animationConfig={animationConfig}
+          mosaicImageUrl={mosaicDataUrl}
+          onBack={handleLogout}
+        />
+        <div className="hidden">
+           <AudioPlayer autoPlay={true} />
+        </div>
+      </>
     );
   }
 
+  // ADMIN VIEW (CONTROLS)
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-pink-50">
       <div className="container mx-auto px-4 py-8">
-        <header className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-2">
+        <header className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
             <Wand2 className="w-8 h-8 text-blue-600" />
-            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">
-              Birthday Photo Mosaic Creator
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-transparent bg-clip-text">
+              Admin Dashboard
             </h1>
           </div>
-          <p className="text-gray-600 text-lg">
-            Create stunning photo mosaics for unforgettable birthday celebrations
-          </p>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            Sign Out
+          </button>
         </header>
 
         <div className="grid lg:grid-cols-3 gap-8">
@@ -148,13 +163,17 @@ function App() {
 
             {canGenerateMosaic && (
               <div className="bg-white rounded-xl shadow-lg p-6">
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">Mosaic Preview</h2>
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">Mosaic Preview & Generation</h2>
                 <MosaicCanvas
                   mainPhoto={mainPhoto}
                   tilePhotos={tilePhotos}
                   config={mosaicConfig}
                   showRevealAnimation={false}
+                  onMosaicGenerated={handleMosaicGenerated}
                 />
+                <p className="mt-4 text-sm text-gray-500 text-center italic">
+                  Note: The mosaic generated here will be what the User sees.
+                </p>
               </div>
             )}
 
@@ -178,18 +197,15 @@ function App() {
 
             <AudioPlayer autoPlay={false} />
 
-            <button
-              onClick={handlePreview}
-              disabled={!canGenerateMosaic}
-              className={`w-full py-4 px-6 rounded-xl font-bold text-lg shadow-lg transition-all flex items-center justify-center gap-2 ${
-                canGenerateMosaic
-                  ? 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white hover:shadow-xl hover:scale-105'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
-            >
-              <Eye className="w-6 h-6" />
-              Preview Birthday Page
-            </button>
+            <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 text-sm text-blue-800">
+              <div className="flex items-center gap-2 font-semibold mb-2">
+                 <Eye className="w-5 h-5" />
+                 Preview User View
+              </div>
+              <p>
+                To see exactly what the user sees, sign out and log in as <strong>user</strong>.
+              </p>
+            </div>
           </div>
         </div>
       </div>
